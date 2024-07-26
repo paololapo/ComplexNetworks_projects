@@ -1,0 +1,5 @@
+"nodeID_from","nodeID_to","weight","country_name","country_ISO3"
+1,1,4550848,"Malta","MLT"
+1,2,1799265,"Malta","MLT"
+2,1,1799265,"Malta","MLT"
+2,2,45155565,"Malta","MLT"

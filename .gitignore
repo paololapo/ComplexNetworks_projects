@@ -1,0 +1,6 @@
+# Ignore geodata files
+data/task_44/gadm/*.rds
+
+# Ignore files from meta
+data/task_44/meta/
+
