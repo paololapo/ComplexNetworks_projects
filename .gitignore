@@ -4,3 +4,7 @@ data/task_44/gadm/*.rds
 # Ignore files from meta
 data/task_44/meta/
 
+# Ignore large files
+data/task_44/networks/full_world_edges.csv
+data/task_44/networks/full_world_nodes.csv
+
