@@ -3,6 +3,7 @@ library(igraph)
 library(dplyr)
 library(foreach)
 library(doParallel)
+#library(pryr)
 
 ### Some functions  ###
 
@@ -111,73 +112,78 @@ get_n_active_bonds <- function(g, F) {
 ### Main simulation function ###
 # Parallel computation
 num_cores <- detectCores() # Get the number of cores
-cl <- makeCluster(num_cores) # Create a cluster with the number of cores
+num_cores <- 3
+cl <- makeCluster(num_cores, outfile = "Log.txt") # Create a cluster with the number of cores
 registerDoParallel(cl) # Register the parallel backend
 
 # Iterations, fixed L, F, varying q
 L_list <- c(30)
 F_list <- c(2, 5, 10)
 q_list <- c(1, 10, 100, 200, 300, 500)
-rep_mc <- 5
-max_iterations <- 1e2
+rep_mc <- 1
+max_iterations <- 1e8
 mode <- "pois"
+log_scale <- unique(round(10^(seq(log10(1), log10(max_iterations), length.out = 96))))
 
-log_scale <- unique(round(10^(seq(log(1), log(max_iterations), length.out = 48))))
-log_scale <- c(log_scale, max_iterations)
 
-# Create a data frame with all combinations
-combinations <- expand.grid(L = L_list, F = F_list, q = q_list)
-
+# Start timing the computation
 start_time <- Sys.time()
-for (mc in 1:rep_mc){
-  # Start timing the computation
 
-  # Parallel execution using foreach
-  res <- foreach(i = 1:nrow(combinations), .combine = rbind, .packages = 'igraph') %dopar% {
-    # Extract the combination
-    L <- combinations$L[i]
-    F <- combinations$F[i]
-    q <- combinations$q[i]
-
+# Loop over the different values of L and F
+res <- foreach(L = L_list, .combine = rbind) %:%
+  foreach(F = F_list, .combine = rbind) %:%
+  foreach(q = q_list, .combine = rbind, .packages = c('igraph')) %dopar% {
     # Initialize a local result variable
     local_res <- data.frame()
 
-    # Create and initialize the graph
-    g <- make_lattice(length = L, dim = 2)
-    n_edges <- ecount(g)
-    N <- vcount(g)
-    g <- initialize_features(g, F, q, mode)
+    # Repeat the simulation 10 times
+    for (mc in 1:rep_mc) {
+      print(paste("Processing L:", L, "F:", F, "q:", q, "mc:", mc, " on worker", Sys.getpid()))
 
-    # Iterate the dynamics
-    for (j in 1:max_iterations) {
-      g <- single_step(g)
+      # Create and initialize the graph
+      g <- make_lattice(length = L, dim = 2)
+      n_edges <- ecount(g)
+      N <- vcount(g)
+      g <- initialize_features(g, F, q, mode)
 
-      # Save the results
-      if (j %in% log_scale) {
-        s_max <- get_s_max(g)
-        n_active_bonds <- get_n_active_bonds(g, F)
-        n_den <- n_active_bonds / n_edges
+      # Iterate the dynamics
+      for (j in 1:max_iterations) {
+        g <- single_step(g)
 
-        local_res <- rbind(local_res,
-          data.frame(mc = mc,
-                      L = L,
-                      F = F,
-                      q = q,
-                      s_max_den = s_max / N,
-                      n_density = n_den,
-                      iteration = j))
-      }
-    } # End of iterations
+#        if (j %% 5e5 == 0) {
+#	  gc()
+#	}
+
+        # Save the results
+        if (j %in% log_scale) {
+      	  print(object.size(g))
+	        print(paste("It: ", j))
+
+          s_max <- get_s_max(g)
+          n_active_bonds <- get_n_active_bonds(g, F)
+          n_den <- n_active_bonds / n_edges
+
+          local_res <- rbind(local_res,
+            data.frame(mc = mc,
+                       L = L,
+                       F = F,
+                       q = q,
+                       s_max_den = s_max / N,
+                       n_density = n_den,
+                       iteration = j))
+        }
+      } # End of iterations
+
+      rm(g)
+
+      # Update iteration counter and log progress
+    } # End of rep_mc
     
-    log_file <- paste0("worker_log_", Sys.getpid(), ".txt")
-    write(paste("Processing L:", L, "F:", F, "q:", q, "mc:", mc, "s_max_den", s_max/N), file = log_file, append = TRUE)
+    print(paste("Results: s_max_den", s_max/N, "n_density", n_den))
+    # write.csv(local_res, paste0("lres_", end_time, ".csv"), row.names = FALSE) ##
 
     return(local_res)
   } # End of nested foreach loops
-
-  write.csv(res, paste0("res_", mc, ".csv"), row.names = FALSE)
-
-} # End of rep_mc
 
 # Stop the cluster
 stopCluster(cl)
@@ -186,3 +192,6 @@ stopCluster(cl)
 end_time <- Sys.time()
 elapsed_time <- end_time - start_time
 cat(sprintf("Total computation time: %s\n", elapsed_time))
+
+# Save res in csv
+write.csv(res, paste0("res_", end_time, ".csv"), row.names = FALSE)
