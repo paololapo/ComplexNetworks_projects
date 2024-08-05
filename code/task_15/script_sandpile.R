@@ -3,8 +3,8 @@ library(igraph)
 library(dplyr)
 
 # Generate a scale free network
-N <- 1e5
-g <- erdos.renyi.game(N, 0.0002, directed = FALSE)
+N <- 1e3
+g <- erdos.renyi.game(N, 0.005, directed = FALSE)
 
 # Assign the critical threshold to each node
 V(g)$z_c <- degree(g)
