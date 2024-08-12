@@ -6,6 +6,8 @@ import pandas as pd
 import multiprocessing as mp
 import itertools
 
+from time import time
+
 ## Functions ##
 def cultural_similarity(features, i, j):
     """
@@ -146,15 +148,17 @@ def dynamics(L, F, q, rep_mc, max_iterations, log_scale):
 
 
 ## Parallel Processing ##
-L_list = [30]
+L_list = [50]
 F_list = [2, 5, 10]
 q_list = [1, 10, 100, 200, 300, 500]
 rep_mc = 1
-max_iterations = 1e4
+max_iterations = 1e10
 
-log_scale = np.unique(np.logspace(0, np.log10(max_iterations), 96, base=10, dtype=int))
+log_scale = np.unique(np.logspace(0, np.log10(1e10), 96, base=10, endpoint=True, dtype=int))
 
 combinations = list(itertools.product(L_list, F_list, q_list, [rep_mc], [max_iterations], [log_scale]))
+
+start_time = time()
 
 n_cores = mp.cpu_count()
 with mp.Pool(processes=n_cores) as pool:
@@ -162,5 +166,7 @@ with mp.Pool(processes=n_cores) as pool:
 
 final_results = pd.concat(results, ignore_index=True)
 
+print("Time taken: ", time()-start_time)
+
 # Save the results
-final_results.to_csv("resultspy.csv", index=False)
+final_results.to_csv("resultspy3.csv", index=False)
