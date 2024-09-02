@@ -107,24 +107,20 @@ def get_n_active_bonds(edges, features, F):
 
 
 ## Dynamics ##
-def dynamics(L, F, q, rep_mc, max_iterations, log_scale):
-    local_res = pd.DataFrame({"mc": [], "L": [], "F": [], "q": [], "s_max_den": [], "n_density": [], "iteration": []})
+def dynamicsOnNetworks(g, F, q, rep_mc, max_iterations, log_scale):
+    local_res = pd.DataFrame({"mc": [], "F": [], "q": [], "s_max_den": [], "n_density": [], "iteration": []})
 
     # Repeat the Monte Carlo simulation
     for mc in range(rep_mc):
-        print(f"Processing Monte Carlo {mc}, L={L}, F={F}, q={q}")
+        print(f"Processing Monte Carlo {mc}, F={F}, q={q}")
 
-        # Create the graph and initialize the features
-        g = nx.grid_graph([L, L])
-        mapping = {(i, j): i * L + j for i in range(L) for j in range(L)}
-        g = nx.relabel_nodes(g, mapping)
-
+        # Initialize the features
         N = g.number_of_nodes()
         edges = list(g.edges())
         n_edges = g.number_of_edges()
         features = np.random.poisson(q, (N, F))
 
-        for j in range(int(max_iterations)):
+        for j in range(int(max_iterations)+1):
             features = single_step(edges, features, F)
 
             # Save the results
@@ -134,7 +130,6 @@ def dynamics(L, F, q, rep_mc, max_iterations, log_scale):
 
                 local_res.loc[len(local_res)] = {
                     "mc": mc,
-                    "L": L,
                     "F": F,
                     "q": q,
                     "s_max_den": s_max_den,
@@ -148,25 +143,44 @@ def dynamics(L, F, q, rep_mc, max_iterations, log_scale):
 
 
 ## Parallel Processing ##
-L_list = [50]
+N = int(1e3)
+networks = [
+    nx.barabasi_albert_graph(N, 5), 
+    nx.barabasi_albert_graph(N, 1),
+    nx.erdos_renyi_graph(N, 0.002),
+    nx.erdos_renyi_graph(N, 0.007),
+    nx.erdos_renyi_graph(N, 0.012),
+]
+
+labels = [
+    "BA_5", 
+    "BA_1", 
+    "ER_0-002", 
+    "ER_0-007", 
+    "ER_0-012", 
+]
+
+
 F_list = [2, 5, 10]
-q_list = [1, 10, 100, 200, 300, 500]
-rep_mc = 1
-max_iterations = 1e10
+q_list = [1, 10, 100, 200]
+rep_mc = 3
+max_iterations = 1e6
 
-log_scale = np.unique(np.logspace(0, np.log10(1e10), 96, base=10, endpoint=True, dtype=int))
+log_scale = np.unique(np.logspace(0, np.log10(1e6), 96, base=10, endpoint=True, dtype=int))
 
-combinations = list(itertools.product(L_list, F_list, q_list, [rep_mc], [max_iterations], [log_scale]))
 
-start_time = time()
+for g, label in zip(networks, labels):
+        combinations = list(itertools.product(g, F_list, q_list, [rep_mc], [max_iterations], [log_scale]))
 
-n_cores = mp.cpu_count()
-with mp.Pool(processes=n_cores) as pool:
-    results = pool.starmap(dynamics, combinations)
+        start_time = time()
 
-final_results = pd.concat(results, ignore_index=True)
+        n_cores = mp.cpu_count()
+        with mp.Pool(processes=n_cores) as pool:
+            results = pool.starmap(dynamicsOnNetworks, combinations)
 
-print("Time taken: ", time()-start_time)
+        final_results = pd.concat(results, ignore_index=True)
 
-# Save the results
-final_results.to_csv("resultspy3.csv", index=False)
+        print("Time taken: ", time()-start_time)
+
+        # Save the results
+        final_results.to_csv(f"{label}.csv", index=False)
