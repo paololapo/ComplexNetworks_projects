@@ -137,7 +137,8 @@ def dynamicsOnNetworks(g, F, q, rep_mc, max_iterations, log_scale):
                     "iteration": j,
                 }
 
-                print(f"Iteration {j}, s_max_den={s_max_den}, n_density={n_density}")
+                if j == log_scale[-1]:
+                    print(f"Iteration {j}, s_max_den={s_max_den}, n_density={n_density}")
 
     return local_res
 
@@ -161,26 +162,26 @@ labels = [
 ]
 
 
-F_list = [2, 5, 10]
+F_list = [2, 10]
 q_list = [1, 10, 100, 200]
 rep_mc = 3
-max_iterations = 1e6
+max_iterations = 5e7
 
-log_scale = np.unique(np.logspace(0, np.log10(1e6), 96, base=10, endpoint=True, dtype=int))
+log_scale = np.unique(np.logspace(0, np.log10(max_iterations), 96, base=10, endpoint=True, dtype=int))
 
 
 for g, label in zip(networks, labels):
-        combinations = list(itertools.product(g, F_list, q_list, [rep_mc], [max_iterations], [log_scale]))
+    combinations = list(itertools.product([g], F_list, q_list, [rep_mc], [max_iterations], [log_scale]))
 
-        start_time = time()
+    start_time = time()
 
-        n_cores = mp.cpu_count()
-        with mp.Pool(processes=n_cores) as pool:
-            results = pool.starmap(dynamicsOnNetworks, combinations)
+    n_cores = mp.cpu_count()
+    with mp.Pool(processes=n_cores) as pool:
+        results = pool.starmap(dynamicsOnNetworks, combinations)
 
-        final_results = pd.concat(results, ignore_index=True)
+    final_results = pd.concat(results, ignore_index=True)
 
-        print("Time taken: ", time()-start_time)
+    print("Time taken: ", time()-start_time)
 
-        # Save the results
-        final_results.to_csv(f"{label}.csv", index=False)
+    # Save the results
+    final_results.to_csv(f"./temp_data/{label}.csv", index=False)
