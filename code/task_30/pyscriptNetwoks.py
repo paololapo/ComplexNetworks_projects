@@ -163,8 +163,8 @@ labels = [
 
 
 F_list = [2, 10]
-q_list = [1, 10, 100, 200]
-rep_mc = 3
+q_list = [1, 2, 4, 6, 8, 10, 100, 200]
+rep_mc = 4
 max_iterations = 5e7
 
 log_scale = np.unique(np.logspace(0, np.log10(max_iterations), 96, base=10, endpoint=True, dtype=int))
