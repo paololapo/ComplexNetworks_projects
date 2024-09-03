@@ -9,7 +9,7 @@ from tqdm import tqdm
 ## Networks ##
 N = 2_000
 f = 0.01
-iterations = 2e6
+iterations = 1e8
 n_cores = mp.cpu_count()
 
 g1 = nx.random_regular_graph(3, N)
