@@ -13,7 +13,7 @@ iterations = 2e6
 n_cores = mp.cpu_count()
 
 g1 = nx.random_regular_graph(3, N)
-g2 = nx.random_regular_graph(4, N)
+g2 = nx.random_regular_graph(3, N)
 
 p_vector = np.concatenate([np.linspace(0.01, 0.1, 10), np.linspace(0.11, 0.5, 10)])
 inputs = [(g1, g2, p, f, iterations) for p in p_vector]
@@ -22,7 +22,7 @@ inputs = [(g1, g2, p, f, iterations) for p in p_vector]
 def getCoupledGraph(N, p, g1=None, g2=None):
     # Create two random regular graphs
     if g1 is None: g1 = nx.random_regular_graph(3, N)
-    if g2 is None: g2 = nx.random_regular_graph(4, N)
+    if g2 is None: g2 = nx.random_regular_graph(3, N)
 
     assert len(g1.nodes) == len(g2.nodes), "g1 and g2 must have the same number of nodes"
     assert N == len(g1.nodes), "N must correspond to the number of nodes"
@@ -112,7 +112,7 @@ def coupledDynamics(g, belogs_to, f, iterations, p):
                 unstable_queue.extend(unstable_neighbors)
                 unstable_queue = list(set(unstable_queue))
 
-        if A_0 > 0 or A_1 > 0:
+        if A_0 > 10 or A_1 > 10:
             res.loc[len(res)] = {
                 "p": p,
                 "iteration": i,
@@ -138,4 +138,4 @@ with mp.Pool(processes=n_cores) as pool:
 final_results = pd.concat(results, ignore_index=True)
 
 ## Save the results ##
-final_results.to_csv("./temp_data/coupled.csv", index=False)
+final_results.to_csv("./temp_data/coupled2.csv", index=False)
