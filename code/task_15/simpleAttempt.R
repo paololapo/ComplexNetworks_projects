@@ -3,8 +3,12 @@ library(igraph)
 library(dplyr)
 
 # Generate a scale free network
-N <- 1e3
-g <- erdos.renyi.game(N, 0.005, directed = FALSE)
+N <- 1e5
+m <- 2
+# g <- barabasi.game(N, m, directed = FALSE)
+# g <- sample_pa(N, power=2, m, directed = FALSE)
+g <- erdos.renyi.game(N, 0.0002, directed = FALSE)
+print(paste("Mean degree", mean(degree(g))))
 
 # Assign the critical threshold to each node
 V(g)$z_c <- degree(g)
@@ -13,13 +17,12 @@ V(g)$z_c <- degree(g)
 V(g)$z <- 0
 
 
-## Dynamics ##
+## Dynamic ##
 f <- 1 / N
 
-iter <- 1e6
+iter <- 4e4
 pb <- txtProgressBar(min = 0, max = iter, style = 3)
 
-start_time <- Sys.time()
 data <- data.frame()
 for (i in 1:iter){ # Shold be a stopping condition
   unstable_queue <- c()
@@ -82,11 +85,18 @@ for (i in 1:iter){ # Shold be a stopping condition
   setTxtProgressBar(pb, i)
 
 } # End of for loop
-
 close(pb)
 
-end_time <- Sys.time()
-print(paste("Execution time:", end_time - start_time))
 
-# Save the data
-write.csv(data, "ER.csv", row.names = FALSE)
+# Plot the avalanche size distribution
+area <- data |>
+  group_by(A) |>
+  summarise(F = n() / nrow(data))
+
+ggplot(area, aes(x = A, y = F)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = "Avalanche area distribution",
+       x = "Avalanche area",
+       y = "Frequency")

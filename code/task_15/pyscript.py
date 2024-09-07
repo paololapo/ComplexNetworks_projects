@@ -5,8 +5,9 @@ import pickle
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 from tqdm import tqdm
+from sandpileDynamics import dynamics
 
-## Networks ##
+## Networks and parameters ##
 N = 10_000
 f = 1/N
 iterations = 1e7
@@ -38,79 +39,10 @@ inputs = [(networks[i], labels[i], f, iterations) for i in range(len(networks))]
 
 
 ## Functions ##
-def dynamics(g, f, iterations):
-    N = g.number_of_nodes()
-    degree = [d for _, d in g.degree()]
-
-    load = np.zeros(N)
-    critical_load = np.array(degree)
-
-    res = pd.DataFrame({
-        "iteration": [],
-        "S": [],
-        "T": [],
-        "G": [],
-        "A": []
-    })
-
-    # Run the simulation
-    for i in tqdm(range(int(iterations))):
-        unstable_queue = []
-
-        # Select a random node
-        node = np.random.randint(N)
-        
-        # Update the load of the selected node
-        load[node] += 1
-
-        # Check if the node has become unstable
-        if load[node] > critical_load[node]:
-            unstable_queue.append(node)
-
-        # Solve unstable queue
-        S = []
-        T = 1
-        G = 0
-        while len(unstable_queue) > 0:
-            # Pick the first node in the queue
-            node = unstable_queue.pop(0)
-            S.append(node)
-
-            # Get the neighbors of the node
-            neighbors = list(g.neighbors(node))
-
-            # Sample a fraction of the neighbors
-            to_keep = np.random.rand(len(neighbors)) > f
-            neighbors = [neighbors[i] for i in range(len(neighbors)) if to_keep[i]]
-            G = G + len(neighbors)
-
-            # Update the load of the neighbors
-            load[neighbors] += 1
-
-            # Update the state of the node
-            load[node] = 0
-
-            # Check if the neighbors have become unstable
-            unstable_neighbors = [n for n in neighbors if load[n] > critical_load[n]]
-            if len(unstable_neighbors) > 0:
-                unstable_queue.extend(unstable_neighbors)
-                unstable_queue = list(set(unstable_queue))
-                T += 1
-
-        A = list(set(S))
-
-        if (len(A) > 0):
-            res.loc[len(res)] = {
-                "iteration": i,
-                "S": len(S),
-                "T": T,
-                "G": G,
-                "A": len(A)
-            }    
-
-    return res
-
 def doParallel(g, label, f, iterations):
+    """
+    Run the sandpile model in parallel and save the results.
+    """
     res = dynamics(g, f, iterations)
     
     # Save the results
