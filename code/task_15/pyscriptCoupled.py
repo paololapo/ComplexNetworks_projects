@@ -9,14 +9,12 @@ from tqdm import tqdm
 ## Networks ##
 N = 2_000
 f = 0.01
-iterations = 1e8
+
+iterations = 5e7
+repetitions = 8
 n_cores = mp.cpu_count()
 
-g1 = nx.random_regular_graph(3, N)
-g2 = nx.random_regular_graph(3, N)
-
-p_vector = np.concatenate([np.linspace(0.01, 0.1, 10), np.linspace(0.11, 0.5, 10)])
-inputs = [(g1, g2, p, f, iterations) for p in p_vector]
+p_vector = np.concatenate([np.linspace(0.01, 0.1, 8), np.linspace(0.11, 0.5, 8)])
 
 ## Functions ##
 def getCoupledGraph(N, p, g1=None, g2=None):
@@ -40,11 +38,20 @@ def getCoupledGraph(N, p, g1=None, g2=None):
     g_coupled.add_edges_from(g2.edges)
 
     # Bernoulli distributed coupling
-    for node in g1.nodes():
-        if np.random.random() < p:
-            # Choose a node from the second layer randomly
-            node_in_layer2 = np.random.choice(list(g2.nodes()))
-            g_coupled.add_edge(node, node_in_layer2, inter_layer=True)
+    stubs_layer1 = [n for n in list(g1.nodes()) if np.random.random() < p]
+    stubs_layer2 = [n for n in list(g2.nodes()) if np.random.random() < p]
+
+    np.random.shuffle(stubs_layer1)
+    np.random.shuffle(stubs_layer2)
+
+    for i, j in zip(stubs_layer1, stubs_layer2):
+        g_coupled.add_edge(i, j, inter_layer=True)
+    
+    # for node in g1.nodes():
+    #     if np.random.random() < p:
+    #         # Choose a node from the second layer randomly
+    #         node_in_layer2 = np.random.choice(list(g2.nodes()))
+    #         g_coupled.add_edge(node, node_in_layer2, inter_layer=True)
 
     return g_coupled, belongs_to
 
@@ -131,11 +138,19 @@ def doCoupledParallel(g1, g2, p, f, iterations):
     return res
 
 ## Parallel Processing ##
-with mp.Pool(processes=n_cores) as pool:
-    results = pool.starmap(doCoupledParallel, inputs)
+results_list = []
+for i in range(repetitions):
+    g1 = nx.random_regular_graph(3, N)
+    g2 = nx.random_regular_graph(3, N)
+    inputs = [(g1, g2, p, f, iterations) for p in p_vector]
+
+    with mp.Pool(processes=n_cores) as pool:
+        results = pool.starmap(doCoupledParallel, inputs)
+
+    results_list.extend(results)
 
 ## Combine the results ##
-final_results = pd.concat(results, ignore_index=True)
+final_results = pd.concat(results_list)
 
 ## Save the results ##
-final_results.to_csv("./temp_data/coupled2.csv", index=False)
+final_results.to_csv("./temp_data/coupled3.csv", index=False)
